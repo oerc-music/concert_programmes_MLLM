@@ -1,0 +1,157 @@
+### Concert programme extraction prompt
+
+**SYSTEM**
+You are a meticulous data-extraction engine.
+Return **one** JSON object; no extra keys, no prose.
+
+**USER**
+*Input:* a scanned concert programme.
+Every programme contains **at least one concert**, but may list several:
+
+* full concerts (with complete repertoire), and/or
+* brief notices of future concerts (date, title, headline, performers, works).
+  Treat **each printed concert notice—full or brief—as its own `concerts` entry; all rules below apply.**
+
+---
+
+#### Extraction rules
+
+1. **No hallucination** – if something is not printed, output `null`.
+2. **Keep levels distinct** –
+
+   * List each concert separately; never mix details between concerts on the same image.
+   * Inside a concert, never copy data from one work to another, or promote work-level data to the concert level (and vice versa).
+3. **Date & time** – *only* these fields are *strictly* normalised
+
+   * `c_date` → `YYYY-MM-DD`
+   * `c_time` → 24-h `HH:MM` (assume PM if AM/PM missing; add ":00" if only an hour appears).
+4. **Performer & composer placement**
+
+   * If a dedicated concert-level block lists performers (and/or composers), copy those names verbatim to `c_perf_list` / `c_comp_list`.
+   * **Never aggregate** names that appear only under individual works into `c_perf_list` / `c_comp_list`. If no block exists at concert-level, set the list to `null`.
+   * Put a performer in `w_perf_list` **only** when printed directly beneath that work; otherwise leave `w_perf_list` `null`.
+5. **Composer presence** – almost every work should have a printed composer; enter in `w_comp`; if truly absent, return `null`.
+6. **Pieces vs. movements**
+
+   * If a title contains two or more works with **different opus / catalogue / part numbers** each (e.g. "BWV 871; Op. 45 No. 2"), always split into separate `works`, even if the composer and performer are identical.
+   * Do not treat a movement heading (e.g., "Allegro") as a standalone work.
+   * If ambiguity arises (e.g., individual songs inside a cycle), treat each printed item as its own work.
+7. **Formatting** – keep punctuation & capitalisation; merge multi-line text into a single line.
+
+   * Multiple roles → `{ "name": "John Pennington", "roles": ["Violin", "Leader"] }`.
+
+---
+
+#### JSON schema  (arrays must contain ≥ 1 item)
+
+```
+ConcertProgramme
+└─ concerts   [1…n]
+   └─ {
+        c_position     int|null,
+        c_title        str|null,
+        c_date         str|null,
+        c_time         str|null,
+        c_venue        str|null,
+        c_society      str|null,
+        c_series_no    str|null,
+        c_comp_list    [str]|null,                     # only if concert-level block
+        c_perf_list    [{name, roles?}]|null,          # only if concert-level block
+        works          [1…n]
+          └─ {
+               w_position  int|null,
+               w_title     str|null,
+               w_comp      str|null,
+               w_movements [{m_position, m_title}]|null,
+               w_perf_list [{name, roles?}]|null       # only if printed under work
+             }
+      }
+```
+
+The authoritative shape (field names, optionality, nesting) is defined in
+[`../schema/oxford_schema.json`](../schema/oxford_schema.json) — this tree is
+a quick-reference summary for human readers; if you edit the schema, update
+this summary to match.
+
+---
+
+#### Example (two concerts, two works each, full movement data)
+
+```json
+{
+  "concerts": [
+    {
+      "c_position": 1,
+      "c_title": "1100th Meeting",
+      "c_date": "1921-01-25",
+      "c_time": "20:30",
+      "c_venue": "Holywell Music Room",
+      "c_society": "Oxford University Musical Club and Union",
+      "c_series_no": "1100th Meeting",
+      "c_comp_list": ["Franz Schubert", "Johannes Brahms"],
+      "c_perf_list": [
+        {"name": "The Pennington Quartet"},
+        {"name": "John Pennington", "roles": ["Violin", "Leader"]}
+      ],
+      "works": [
+        {
+          "w_position": 1,
+          "w_title": "String Quartet in D minor, D 810 \"Death and the Maiden\"",
+          "w_comp": "Franz Schubert",
+          "w_movements": [
+            {"m_position": 1, "m_title": "Allegro"},
+            {"m_position": 2, "m_title": "Andante con moto"},
+            {"m_position": 3, "m_title": "Scherzo: Allegro molto"},
+            {"m_position": 4, "m_title": "Presto — Prestissimo"}
+          ],
+          "w_perf_list": null
+        },
+        {
+          "w_position": 2,
+          "w_title": "Piano Quintet in F minor, Op. 34",
+          "w_comp": "Johannes Brahms",
+          "w_movements": [
+            {"m_position": 1, "m_title": "Allegro non troppo"},
+            {"m_position": 2, "m_title": "Andante, un poco Adagio"},
+            {"m_position": 3, "m_title": "Scherzo. Allegro - Trio"},
+            {"m_position": 4, "m_title": "Finale. Poco sostenuto — Allegro non troppo"}
+          ],
+          "w_perf_list": [
+            {"name": "Jane Doe", "roles": ["Piano"]},
+            {"name": "The Pennington Quartet"}
+          ]
+        }
+      ]
+    },
+    {
+      "c_position": 2,
+      "c_title": "Lunch-hour Recital",
+      "c_date": "1921-01-26",
+      "c_time": "13:00",
+      "c_venue": "Holywell Music Room",
+      "c_society": "Oxford University Musical Club and Union",
+      "c_series_no": null,
+      "c_comp_list": null,
+      "c_perf_list": null,
+      "works": [
+        {
+          "w_position": 1,
+          "w_title": "An die Musik, D 547",
+          "w_comp": "Franz Schubert",
+          "w_movements": null,
+          "w_perf_list": null
+        },
+        {
+          "w_position": 2,
+          "w_title": "Les nuits d'été, Op. 7 — \"Absence\"",
+          "w_comp": "Hector Berlioz",
+          "w_movements": null,
+          "w_perf_list": null
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Return only valid JSON matching the schema.**

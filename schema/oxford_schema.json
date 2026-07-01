@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConcertProgramme",
+  "description": "Structured metadata extracted from a single scanned concert programme image. A programme contains one or more concert notices (full programmes and/or brief notices of future concerts); each is captured as one entry in 'concerts'. This schema mirrors the hierarchical concert-level (c_*) / work-level (w_*) / movement-level (m_*) design described in the DLfM 2026 paper (Table 2, Figure: schema tree).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["concerts"],
+  "properties": {
+    "concerts": {
+      "title": "Concerts",
+      "description": "Concert events printed on this programme image, in printed order. At least one. Treat each printed concert notice -- full programme or brief future-concert notice -- as its own entry; never mix details between concerts on the same image.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/ConcertEvent" }
+    }
+  },
+  "$defs": {
+    "ConcertEvent": {
+      "title": "ConcertEvent",
+      "description": "A single concert event (concert-level metadata, c_*), with its performed works.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["works"],
+      "properties": {
+        "c_position": {
+          "title": "Concert order",
+          "description": "Order of this concert on the programme image, starting at 1.",
+          "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "c_title": {
+          "title": "Concert title",
+          "description": "Event title, if printed (e.g. a named concert or recital title). As printed; do not infer one if absent.",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_date": {
+          "title": "Date",
+          "description": "Concert date, normalised to ISO 8601 (YYYY-MM-DD). This is one of the two strictly-normalised fields (see prompts/PROMPT.txt rule 3).",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_time": {
+          "title": "Time",
+          "description": "Concert start time, normalised to 24-hour ISO 8601 (HH:MM). Assume PM if AM/PM is missing; add ':00' if only an hour is printed.",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_venue": {
+          "title": "Venue",
+          "description": "Venue name or address line as printed.",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_society": {
+          "title": "Society / club",
+          "description": "Organising society or club name as printed (e.g. 'Oxford University Musical Club').",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_series_no": {
+          "title": "Series / meeting no.",
+          "description": "Series or meeting number as printed (e.g. '1100th Meeting').",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "c_comp_list": {
+          "title": "Composers (concert-level)",
+          "description": "Composers listed in a dedicated concert-level block only -- never aggregated from individual works below. Null if no such block is printed.",
+          "anyOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "null" }
+          ]
+        },
+        "c_perf_list": {
+          "title": "Performers (concert-level)",
+          "description": "Performers listed in a dedicated concert-level block only -- never aggregated from individual works below. Null if no such block is printed.",
+          "anyOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/Performer" } },
+            { "type": "null" }
+          ]
+        },
+        "works": {
+          "title": "Works",
+          "description": "Works performed in this concert, in performance order. At least one.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Work" }
+        }
+      }
+    },
+    "Work": {
+      "title": "Work",
+      "description": "A single musical work performed within a concert (work-level metadata, w_*), with optional movements and work-level performers.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "w_position": {
+          "title": "Work order",
+          "description": "Order of this work within the concert, starting at 1.",
+          "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "w_title": {
+          "title": "Work title",
+          "description": "Work title line, including key, opus, or catalogue number as printed (e.g. 'String Quartet in D minor, D 810').",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "w_comp": {
+          "title": "Composer",
+          "description": "Composer attributed to this work. Almost every work should have one; only use null if truly absent from the print.",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "w_movements": {
+          "title": "Movements",
+          "description": "Movements or sections printed under this work, in order. Do not split a work into separate 'works' entries unless it has distinct opus/catalogue numbers -- see prompts/PROMPT.txt rule 6. Null if none are listed.",
+          "anyOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/Movement" } },
+            { "type": "null" }
+          ]
+        },
+        "w_perf_list": {
+          "title": "Performers (work-level)",
+          "description": "Performers printed directly beneath this specific work only (not the concert-level block). Null if none are listed.",
+          "anyOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/Performer" } },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "Movement": {
+      "title": "Movement",
+      "description": "A movement or section heading printed under a work (movement-level metadata, m_*).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "m_position": {
+          "title": "Movement order",
+          "description": "Order of this movement within the work, starting at 1.",
+          "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        },
+        "m_title": {
+          "title": "Movement / section heading",
+          "description": "Movement or section heading as printed (e.g. 'Allegro molto moderato').",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        }
+      }
+    },
+    "Performer": {
+      "title": "Performer",
+      "description": "A named performer with optional role label(s).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Performer name as printed (e.g. 'S. F. Blagrove', or an ensemble name).",
+          "anyOf": [{ "type": "string" }, { "type": "null" }]
+        },
+        "roles": {
+          "title": "Role(s)",
+          "description": "Instrument, voice, or role label(s) for this performer (e.g. ['Violin', 'Leader']).",
+          "anyOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

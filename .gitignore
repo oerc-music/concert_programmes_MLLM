@@ -1,0 +1,25 @@
+# --- Secrets: never commit a key, ever -------------------------------------
+.env
+*.key
+OPENAI_KEY.txt
+GEMINI_KEY.txt
+
+# --- Runtime state (recreated automatically) --------------------------------
+src/.gemini_usage.json
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# --- Output: keep the folder, ignore generated runs -------------------------
+output/*
+!output/.gitkeep
+!output/README.md
+
+# --- Editor / OS cruft -------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GUI Demo — MLLM-Assisted Concert Programme Metadata Extraction (DLfM 2026)</title>
+  <meta name="description" content="A GUI demo for MLLM-assisted concert programme metadata extraction, prepared for DLfM 2026. Not finalised, publishable research software.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Live-run confirmation — shown before each non-offline run -->
+  <div class="liverun-backdrop" id="liverun-backdrop" hidden aria-modal="true" role="dialog" aria-labelledby="liverun-heading">
+    <div class="liverun-card">
+      <h3 class="liverun-card__heading" id="liverun-heading">Confirm live annotation</h3>
+      <div class="liverun-card__body">
+        <p>Your selected images will be sent to <strong>Google Gemini</strong> via your API key.</p>
+        <div class="consent-card__free">
+          <strong>Free-tier keys cannot incur charges.</strong> Gemini's free tier requires no payment method and cannot bill you.
+        </div>
+        <div class="consent-card__warning">
+          If your key has billing enabled, you alone are responsible for any costs. The author and the University of Oxford accept no liability.
+        </div>
+      </div>
+      <div class="liverun-card__footer">
+        <label class="consent-card__check">
+          <input type="checkbox" id="liverun-checkbox">
+          I am using a free-tier key, or I accept full responsibility for any costs.
+        </label>
+        <div class="liverun-card__actions">
+          <button type="button" id="liverun-cancel" class="btn btn--ghost">Cancel</button>
+          <button type="button" id="liverun-accept" class="btn btn--primary" disabled>Run annotation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Consent gate — shown once per browser; blocks all app interaction until accepted -->
+  <div class="consent-backdrop" id="consent-backdrop" hidden aria-modal="true" role="dialog" aria-labelledby="consent-heading">
+    <div class="consent-card">
+      <h2 class="consent-card__heading" id="consent-heading">Please read before continuing</h2>
+      <div class="consent-card__body">
+        <p>This is an <strong>experimental demonstration tool</strong> prepared for DLfM 2026. It is not finalised or peer-reviewed. Annotations it produces are <strong>unverified, AI-generated first-pass drafts</strong> — not authoritative catalogue metadata.</p>
+        <div class="consent-card__free">
+          <strong>Using the free tier costs nothing.</strong> This demo runs on Google Gemini's free tier, which requires no payment method. Used with a free-tier key, it cannot charge you.
+        </div>
+        <div class="consent-card__warning">
+          <strong>If you enable billing on your API key</strong> (paid tier), you may incur costs. You alone are responsible for setting spending and rate limits. The author and the University of Oxford accept <strong>no liability</strong> for any charges or other losses arising from use of this software, which is provided <strong>"as is", without warranty of any kind</strong>.
+        </div>
+        <p><strong>Images leave your machine</strong> when you run a live annotation — each image is sent to Google Gemini per their terms. The <strong>offline demo mode</strong> makes no network requests at all.</p>
+        <p style="font-size:0.8rem;color:var(--muted)">Full terms: <a href="DISCLAIMER.md" target="_blank" rel="noopener">DISCLAIMER.md</a> · <a href="LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+      </div>
+      <div class="consent-card__footer">
+        <label class="consent-card__check">
+          <input type="checkbox" id="consent-checkbox">
+          I have read and understand the above.
+        </label>
+        <button type="button" id="consent-accept" class="btn btn--primary" disabled>Accept &amp; continue</button>
+      </div>
+    </div>
+  </div>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="app-header">
+    <div class="app-header__title">
+      <h1>Concert Programme Annotation</h1>
+      <p class="app-header__subtitle">
+        GUI demo for DLfM 2026 — MLLM-assisted metadata extraction from historical concert programmes.
+        Not finalised, publishable research software.
+      </p>
+    </div>
+    <nav class="stepper" aria-label="Workflow steps">
+      <ol>
+        <li data-step="setup" class="is-active"><span class="stepper__num">1</span> Setup</li>
+        <li data-step="progress"><span class="stepper__num">2</span> Progress</li>
+        <li data-step="results"><span class="stepper__num">3</span> Results</li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <!-- ============================== SETUP ============================== -->
+    <section id="screen-setup" class="screen is-active" aria-labelledby="setup-heading">
+      <div class="setup-grid">
+        <div class="setup-col setup-col--primary">
+          <h2 id="setup-heading">Set up a run</h2>
+
+          <div class="provider-static">
+            <span class="provider-static__name">Google Gemini <span class="badge badge--accent">Free tier</span></span>
+            <span class="provider-static__desc">
+              No paid account required. <a href="#" data-help="gemini">How to get a key →</a>
+            </span>
+          </div>
+
+          <div class="field">
+            <label for="api-key">API key</label>
+            <input type="password" id="api-key" autocomplete="off" spellcheck="false"
+                   placeholder="Pasted here only — kept in memory for this session, never saved">
+            <p class="field__hint" id="api-key-hint"></p>
+          </div>
+
+          <div class="field">
+            <label for="model-select">Model</label>
+            <select id="model-select"></select>
+          </div>
+
+          <p class="usage-meter" id="gemini-usage-field"></p>
+
+          <div class="field field--narrow">
+            <label for="max-images">Images to annotate</label>
+            <input type="number" id="max-images" value="10" min="1" max="100" step="1">
+            <p class="field__hint">Annotates the first <em>N</em> images. Click thumbnails below to select specific images instead.</p>
+          </div>
+
+          <div class="field-toggle">
+            <label class="switch">
+              <input type="checkbox" id="send-binarised">
+              <span class="switch__track"></span>
+            </label>
+            <span>Send the binarised (black &amp; white) image instead of colour</span>
+          </div>
+
+          <details class="editor-disclosure" id="prompt-disclosure">
+            <summary>Edit extraction prompt</summary>
+            <textarea id="prompt-editor" class="code-editor" spellcheck="false" aria-label="Extraction prompt"></textarea>
+            <div class="editor-actions">
+              <button type="button" id="save-prompt" class="btn btn--ghost">Save prompt</button>
+              <span class="save-status" id="prompt-save-status"></span>
+            </div>
+          </details>
+
+          <details class="editor-disclosure" id="schema-disclosure">
+            <summary>Edit output schema</summary>
+            <textarea id="schema-editor" class="code-editor" spellcheck="false" aria-label="Output schema (JSON Schema)"></textarea>
+            <div class="editor-actions">
+              <button type="button" id="save-schema" class="btn btn--ghost">Save schema</button>
+              <span class="save-status" id="schema-save-status"></span>
+            </div>
+          </details>
+
+          <div class="field-toggle field-toggle--highlight">
+            <label class="switch">
+              <input type="checkbox" id="offline-mode">
+              <span class="switch__track"></span>
+            </label>
+            <span>
+              <strong>Offline demo mode</strong> — replay pre-computed results for the 100 bundled
+              samples. No key, no network, no cost.
+            </span>
+          </div>
+
+          <button type="button" id="run-button" class="btn btn--primary btn--large">Run annotation</button>
+          <p class="run-error" id="run-error" hidden></p>
+
+          <div class="prev-runs" id="prev-runs" hidden>
+            <p class="prev-runs__label">Previous runs</p>
+            <div class="prev-runs__list" id="prev-runs-list"></div>
+          </div>
+        </div>
+
+        <div class="setup-col setup-col--gallery">
+          <div class="gallery-header">
+            <h3>Images</h3>
+            <span class="muted" id="image-count"></span>
+            <span id="selected-count" hidden></span>
+            <button type="button" id="clear-selection" class="btn btn--ghost btn--sm" hidden>Clear selection</button>
+          </div>
+          <div class="thumb-grid" id="thumb-grid" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================= PROGRESS ============================= -->
+    <section id="screen-progress" class="screen" aria-labelledby="progress-heading">
+      <div class="progress-panel">
+        <h2 id="progress-heading">Annotating…</h2>
+        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar">
+          <div class="progress-bar__fill" id="progress-fill"></div>
+        </div>
+        <p class="progress-count"><span id="progress-count-text">0 / 0</span> images</p>
+        <p class="progress-current" id="progress-current"></p>
+
+        <button type="button" id="stop-button" class="btn btn--danger-ghost">Stop run</button>
+
+        <ul class="progress-list" id="progress-list"></ul>
+      </div>
+    </section>
+
+    <!-- ============================== RESULTS ============================== -->
+    <section id="screen-results" class="screen" aria-labelledby="results-heading">
+      <h2 class="visually-hidden" id="results-heading" style="position:absolute;left:-9999px;">Results</h2>
+      <div class="results-shell">
+        <aside class="results-rail" id="results-rail" aria-label="Annotated images"></aside>
+
+        <div class="record-viewer">
+          <div class="record-toolbar">
+            <div class="record-toolbar__nav">
+              <button type="button" id="back-to-setup" class="btn btn--ghost btn--sm" aria-label="Back to setup">← Setup</button>
+              <button type="button" id="prev-image" class="btn btn--icon" aria-label="Previous image">‹</button>
+              <span id="record-position">– / –</span>
+              <button type="button" id="next-image" class="btn btn--icon" aria-label="Next image">›</button>
+            </div>
+            <div class="record-toolbar__actions">
+              <a id="download-csv" class="btn btn--ghost" download>Download CSV</a>
+              <a id="download-jsonl" class="btn btn--ghost" download>Download JSONL</a>
+            </div>
+          </div>
+
+          <div class="record-split">
+            <div class="image-pane">
+              <div class="image-pane__toolbar">
+                <div class="seg-control" role="radiogroup" aria-label="Image view">
+                  <button type="button" class="seg-control__option is-active" data-view="original">Original</button>
+                  <button type="button" class="seg-control__option" data-view="binarised">Binarised</button>
+                </div>
+              </div>
+              <div class="image-pane__frame">
+                <img id="record-image" alt="">
+              </div>
+            </div>
+
+            <div class="catalogue-pane" id="catalogue-pane">
+              <p class="empty-state">No image selected.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>
+      GUI demo for DLfM 2026 — MLLM-assisted concert programme metadata extraction.
+      Not finalised, publishable research software.
+      Archived data snapshot:
+      <a href="https://dx.doi.org/10.5287/ora-n6yg5jgqy" target="_blank" rel="noopener">10.5287/ora-n6yg5jgqy</a>
+      · Sample images © Bodleian Libraries, University of Oxford.
+    </p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
