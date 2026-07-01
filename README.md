@@ -7,7 +7,6 @@
 [![Status: GUI Demo](https://img.shields.io/badge/Status-GUI%20Demo-blue?style=flat-square)](#disclaimer)
 
 > **A GUI demo for DLfM 2026 — MLLM-assisted concert programme metadata extraction.**
-> Not finalised, publishable research software.
 
 ---
 
