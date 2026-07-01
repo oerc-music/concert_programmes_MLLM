@@ -27,7 +27,7 @@
 
 This tool provides a local web-based graphical interface for the MLLM-assisted concert programme metadata-extraction workflow described in:
 
-> Eck, S. O. & Page, K. R. (2026). *Multimodal Large Language Model-Assisted Metadata Extraction from Historical Concert Programmes (1872–1928).* Proceedings of the 13th International Conference on Digital Libraries for Musicology (DLfM 2026), Thessaloniki. DOI [10.1145/3815723.3815726](https://doi.org/10.1145/3815723.3815726)
+> Sebastian Oliver Eck and Kevin R. Page. 2026. Multimodal Large Language Model-Assisted Metadata Extraction from Historical Concert Programmes (1872–1928). In 13th Annual Conference on Digital Libraries for Musicology (DLfM 2026), July 02, 2026, Thessaloniki, Greece. ACM, New York, NY, USA, 10 pages. https://doi.org/10.1145/3815723.3815726
 
 Historical concert programmes are valuable musicological sources, yet most archival holdings lack item-level metadata. This tool uses a multimodal LLM to extract structured metadata (date, venue, performers, works, movements) from scanned programme images as a first-pass record ready for expert verification. From the paper's abstract:
 
